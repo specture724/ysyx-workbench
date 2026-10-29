@@ -1,6 +1,6 @@
 #include "Vtop.h"
 #include "verilated.h"
-#include "verilated_vcd_c.h"
+#include "verilated_fst_c.h"
 
 #include <filesystem>
 #include <stdio.h>
@@ -13,17 +13,17 @@ int main(int argc, char** argv) {
     VerilatedContext* contextp = new VerilatedContext;
     contextp->commandArgs(argc, argv);
     fs::path exe_dir = fs::read_symlink("/proc/self/exe").parent_path();
-    fs::path wave_path = exe_dir / "wave.vcd";
+    fs::path wave_path = exe_dir / "wave.fst";
     Vtop* top = new Vtop{contextp};
 
     // Enable tracing
     contextp->traceEverOn(true);
 
-    VerilatedVcdC trace;
+    VerilatedFstC trace;
     top->trace(&trace, 99);
     trace.open(wave_path.string().c_str());
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 9; i++) {
         int a = i & 1;
         int b = (i >> 1) & 1;
 
