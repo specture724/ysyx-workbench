@@ -15,11 +15,11 @@ void set_rom() {
     ROM[4] = 0b0001'0111;  // add r1, r1, r3
     ROM[5] = 0b0010'1001;  // add r2, r2, r1
     ROM[6] = 0b1101'0001;  // bner0 r1, 4
-    ROM[7] = 0b0110'1000;  // io r2, 0
-    ROM[8] = 0b1110'0011; // bner0 r3, 8
+    // ROM[7] = 0b0110'1000;  // io r2, 0
+    ROM[7] = 0b1101'1111;  // bner0 r3, 7 (r3!=0, jump to self = halt)
 }
 
-void inst_cycle () {
+void ref_inst_cycle () {
     uint8_t instr = ROM[PC];
     // std::cout << "PC=" << static_cast<int>(PC) << std::endl;
     switch (instr >> 6)
@@ -59,14 +59,19 @@ void inst_cycle () {
     }
 }
 
-void init () {
+void ref_init () {
     PC = 0;
+    GPR.assign(4, 0x00);
     set_rom();
 }
 
-int main () {
-    init();
-    while (1) {
-        inst_cycle();        
-    }
-}
+// difftest interface: expose reference model state
+uint8_t *ref_get_regs () { return GPR.data(); }
+uint8_t ref_get_pc () { return PC; }
+
+// int main () {
+//     init();
+//     while (1) {
+//         inst_cycle();        
+//     }
+// }

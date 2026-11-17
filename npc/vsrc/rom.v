@@ -11,8 +11,8 @@ module rom (
             8'd4: data = 8'b0001_0111; // add r1, r1, r3  (00, rd=01, rs1=01, rs2=11)
             8'd5: data = 8'b0010_1001; // add r2, r2, r1  (00, rd=10, rs1=10, rs2=01)
             8'd6: data = 8'b1101_0001; // bner0 r1, 4    (11, addr=0100, rs2=01)
-            // 8'd7: data = 8'b1101_1111; // bner0 r3, 7    (11, addr=0111, rs2=11)
-            8'd8: data = 8'b0110_1000; // io r2, 0
+            8'd7: data = 8'b1101_1111; // bner0 r3, 7    (11, addr=0111, rs2=11)
+            // 8'd8: data = 8'b0110_1000; // io r2, 0
             default: data = 8'b0000_0000;
         endcase
     end
