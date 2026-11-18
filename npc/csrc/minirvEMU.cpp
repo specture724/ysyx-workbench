@@ -6,11 +6,11 @@
 #include <stdexcept>
 
 constexpr uint32_t GPR_SIZE = 32;   // 32 registers for RV32I
-constexpr uint32_t ROM_SIZE = 4096; // 4 KiB instruction memory, byte addressed
+constexpr uint32_t RAM_SIZE = 4096; // 4 KiB unified memory (code + data), byte addressed
 
 uint32_t PC = 0;                            // byte address
 std::vector<uint32_t> GPR(GPR_SIZE, 0x00);  // x0 is always 0
-std::vector<uint8_t> ROM(ROM_SIZE, 0x00);   // byte addressable, little endian
+std::vector<uint8_t> RAM(RAM_SIZE, 0x00);   // byte addressable, little endian
 
 enum class Instruction : uint8_t {
     // I-type ALU
@@ -91,16 +91,17 @@ uint32_t alu(Control::AluOp alu_op, uint32_t a, uint32_t b) {
     return output;
 }
 
-// PC is a byte address; an instruction is 4 bytes, little endian.
+// PC is a byte address; code and data live in the same RAM.
+// An instruction is 4 bytes, little endian.
 uint32_t fetch (uint32_t pc) {
-    if ((pc & 0x3u) != 0 || pc > ROM_SIZE - 4) {
+    if ((pc & 0x3u) != 0 || pc > RAM_SIZE - 4) {
         throw std::runtime_error(
             "Fetch fault at pc=0x" + std::to_string(pc));
     }
-    return  static_cast<uint32_t>(ROM[pc])
-         | (static_cast<uint32_t>(ROM[pc + 1]) << 8)
-         | (static_cast<uint32_t>(ROM[pc + 2]) << 16)
-         | (static_cast<uint32_t>(ROM[pc + 3]) << 24);
+    return  static_cast<uint32_t>(RAM[pc])
+         | (static_cast<uint32_t>(RAM[pc + 1]) << 8)
+         | (static_cast<uint32_t>(RAM[pc + 2]) << 16)
+         | (static_cast<uint32_t>(RAM[pc + 3]) << 24);
 }
 
 void ref_inst_cycle () {
@@ -145,18 +146,18 @@ void ref_init () {
 void ref_set_pc (uint32_t pc) { PC = pc; }
 
 // loader / debug interface
-void ref_load_rom (const uint8_t *data, std::size_t size, uint32_t base = 0) {
+void ref_load_ram (const uint8_t *data, std::size_t size, uint32_t base = 0) {
     if (size == 0) return;
-    if (base > ROM_SIZE || size > static_cast<std::size_t>(ROM_SIZE - base)) {
+    if (base > RAM_SIZE || size > static_cast<std::size_t>(RAM_SIZE - base)) {
         throw std::runtime_error(
-            "ROM overflow: " + std::to_string(size) + " bytes at 0x" +
-            std::to_string(base) + ", ROM size is " + std::to_string(ROM_SIZE));
+            "RAM overflow: " + std::to_string(size) + " bytes at 0x" +
+            std::to_string(base) + ", RAM size is " + std::to_string(RAM_SIZE));
     }
-    std::copy(data, data + size, ROM.begin() + base);
+    std::copy(data, data + size, RAM.begin() + base);
 }
 
-const uint8_t *ref_get_rom () { return ROM.data(); }
-uint32_t ref_rom_size () { return ROM_SIZE; }
+const uint8_t *ref_get_ram () { return RAM.data(); }
+uint32_t ref_ram_size () { return RAM_SIZE; }
 
 // difftest interface: expose reference model state
 uint32_t *ref_get_regs () { return GPR.data(); }
