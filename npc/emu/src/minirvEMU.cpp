@@ -23,6 +23,10 @@ enum class Instruction : uint8_t {
     ADD,
     // U-type
     LUI,
+    // load
+    LW,
+    // store 
+    SW,
 };
 
 Instruction decode (uint32_t instr) {
@@ -37,8 +41,8 @@ Instruction decode (uint32_t instr) {
         }
 
         case 0x67: {
-            if (funct3 != 0x0) { throw std::runtime_error("Invalid Instruction."); }
-            return Instruction::JALR;
+            if (funct3 == 0x0) return Instruction::JALR;
+            else throw std::runtime_error("Invalid Instruction."); 
         }
 
         case 0x37: return Instruction::LUI;
@@ -48,25 +52,47 @@ Instruction decode (uint32_t instr) {
             else throw std::runtime_error("Invalid Instruction.");
         }
 
+        case 0x03: {
+            if (funct3 == 0x2) return Instruction::LW;
+            else throw std::runtime_error("Invalid Instruction.");
+        }
+
+        case 0x23: {
+            if (funct3 == 0x2) return Instruction::SW;
+            else throw std::runtime_error("Invalid Instruction.");
+        }
+
         default: throw std::runtime_error("Instruction not supported.");
     }
 }
 
 // PC is a byte address; code and data live in the same RAM.
 // An instruction is 4 bytes, little endian.
-uint32_t fetch (uint32_t pc) {
-    if ((pc & 0x3u) != 0 || pc > RAM_SIZE - 4) {
+uint32_t fetch_word (uint32_t addr) {
+    if ((addr) != 0 || addr > RAM_SIZE - 4) {
         throw std::runtime_error(
-            "Fetch fault at pc=0x" + std::to_string(pc));
+            "Fetch fault at addr=0x" + std::to_string(addr));
     }
-    return  static_cast<uint32_t>(RAM[pc])
-         | (static_cast<uint32_t>(RAM[pc + 1]) << 8)
-         | (static_cast<uint32_t>(RAM[pc + 2]) << 16)
-         | (static_cast<uint32_t>(RAM[pc + 3]) << 24);
+    return  static_cast<uint32_t>(RAM[addr])
+         | (static_cast<uint32_t>(RAM[addr + 1]) << 8)
+         | (static_cast<uint32_t>(RAM[addr + 2]) << 16)
+         | (static_cast<uint32_t>(RAM[addr + 3]) << 24);
 }
 
+void write_word(uint32_t addr, uint32_t word) {
+    if (addr % 4 != 0 || addr > RAM_SIZE - 4) {
+        throw std::runtime_error(
+            "Write fault at addr=0x" + std::to_string(addr));
+    }
+    RAM[addr]     = static_cast<uint8_t>(word      );
+    RAM[addr + 1] = static_cast<uint8_t>(word >>  8);
+    RAM[addr + 2] = static_cast<uint8_t>(word >> 16);
+    RAM[addr + 3] = static_cast<uint8_t>(word >> 24);
+}
+
+
 void ref_inst_cycle () {
-    uint32_t instr = fetch(PC);
+    uint32_t instr = fetch_word(PC);
 
     // decode
     Instruction Instruction_type = decode(instr);
@@ -106,13 +132,33 @@ void ref_inst_cycle () {
         case Instruction::ADD: {
             uint8_t rs1 = (instr >> 15) & 0x1F;
             uint8_t rd = (instr >> 7) & 0x1F;
-            uint32_t rs2 = (instr >> 20) & 0x1F;
+            uint8_t rs2 = (instr >> 20) & 0x1F;
             if (rd != 0)
                 GPR[rd] = GPR[rs1] + GPR[rs2];
             PC = PC + 4;
             break;
         }
-        
+
+        case Instruction::LW: {
+            uint8_t rs1 = (instr >> 15) & 0x1F;
+            uint8_t rd = (instr >> 7) & 0x1F;
+            uint32_t imm = instr >> 20;
+            uint32_t addr = GPR[rs1] + imm;
+            if (rd != 0)
+                GPR[rd] = fetch_word(addr);
+            PC = PC + 4;
+            break;
+        }
+
+        case Instruction::SW: {
+            uint8_t rs1 = (instr >> 15) & 0x1F;
+            uint8_t rs2 = (instr >> 20) & 0x1F;
+            uint32_t imm = instr >> 20 + ((instr >> 7) & 0x1F);
+            uint32_t addr = GPR[rs1] + imm;
+            write_word(addr, GPR[rs2]);
+            PC = PC + 4;
+            break;
+        }
         default:
             throw std::runtime_error("Should not reach here.");
     }
