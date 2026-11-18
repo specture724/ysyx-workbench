@@ -12,9 +12,10 @@
 // Reset PC to 0 and clear the general-purpose registers.
 void ref_init ();
 
-// Execute one instruction. May throw std::runtime_error on an illegal
+// Execute one instruction. Returns 1 after executing EBREAK (the program
+// asks to stop), 0 otherwise. May throw std::runtime_error on an illegal
 // instruction or an out-of-range / unaligned fetch.
-void ref_inst_cycle ();
+uint8_t ref_inst_cycle ();
 
 // Set the PC explicitly (used by the loader to enter at a given address).
 void ref_set_pc (uint32_t pc);

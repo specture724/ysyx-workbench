@@ -1,5 +1,5 @@
 # Exercises the instructions currently implemented by minirvEMU:
-#   ADDI, ADD, LUI, LW, SW, LBU, SB, JALR  + the "write to x0 is ignored" rule.
+#   ADDI, ADD, LUI, LW, SW, LBU, SB, JALR, EBREAK  + the "write to x0 is ignored" rule.
 #
 # Expected final state:
 #   x0  = 0x00000000
@@ -17,7 +17,7 @@
 #   t0  = 0x00000200
 #   t1  = 0x000000ab
 #   ra  = 0x00000048   (return address of the jalr call)
-#   pc  = 0x00000050   (self-loop used as halt)
+#   pc  = 0x00000050   (stays at ebreak)
 #   RAM[0x208..0x20b] = 05 ab 00 00
 #   RAM[0x20c..0x20f] = fd ff ff ff
 #
@@ -49,9 +49,8 @@ _start:
 
     jalr ra, 84(zero)         # 0x44: call func at 0x54, ra = 0x48
     addi a6, zero, 7          # 0x48: executed after the call returns
-    jalr zero, 80(zero)       # 0x4c: jump to halt at 0x50
-halt:
-    jalr zero, 80(zero)       # 0x50: self-loop, halt
+    jalr zero, 80(zero)       # 0x4c: jump to the ebreak at 0x50
+    ebreak                     # 0x50: halt
 func:
     addi a7, zero, 42         # 0x54: a7 = 42
     jalr zero, 0(ra)          # 0x58: return to ra (0x48)

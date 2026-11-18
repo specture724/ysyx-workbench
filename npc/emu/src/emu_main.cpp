@@ -99,31 +99,68 @@ void dump_ram (uint32_t start, uint32_t len) {
 
 // ------------------------------------------------------------- disassembly
 
-// Only the instructions the model implements today (addi / jalr).
-// Extend this alongside `decode()` when a new instruction is added.
+// Mirrors the instruction subset implemented in src/minirvEMU.cpp.
 std::string disasm (uint32_t instr) {
     char buf[96];
     const uint32_t opcode = instr & 0x7Fu;
     const uint32_t rd     = (instr >> 7) & 0x1Fu;
     const uint32_t funct3 = (instr >> 12) & 0x7u;
     const uint32_t rs1    = (instr >> 15) & 0x1Fu;
+    const uint32_t rs2    = (instr >> 20) & 0x1Fu;
     const int32_t  imm    = static_cast<int32_t>(instr) >> 20;
+
+    if (instr == 0x00100073u) return "ebreak";
 
     switch (opcode) {
     case 0x13:
-        if (funct3 == 0x0) {
+        if (funct3 == 0x0)
             std::snprintf(buf, sizeof buf, "addi %s, %s, %d",
                           abi_name(rd), abi_name(rs1), static_cast<int>(imm));
-            return buf;
-        }
-        break;
+        else
+            std::snprintf(buf, sizeof buf, ".word 0x%08x", instr);
+        return buf;
     case 0x67:
-        if (funct3 == 0x0) {
+        if (funct3 == 0x0)
             std::snprintf(buf, sizeof buf, "jalr %s, %d(%s)",
                           abi_name(rd), static_cast<int>(imm), abi_name(rs1));
-            return buf;
-        }
-        break;
+        else
+            std::snprintf(buf, sizeof buf, ".word 0x%08x", instr);
+        return buf;
+    case 0x37:
+        std::snprintf(buf, sizeof buf, "lui %s, 0x%x", abi_name(rd),
+                      (instr >> 12) & 0xFFFFFu);
+        return buf;
+    case 0x33:
+        if (funct3 == 0x0)
+            std::snprintf(buf, sizeof buf, "add %s, %s, %s", abi_name(rd),
+                          abi_name(rs1), abi_name(rs2));
+        else
+            std::snprintf(buf, sizeof buf, ".word 0x%08x", instr);
+        return buf;
+    case 0x03:
+        if (funct3 == 0x2)
+            std::snprintf(buf, sizeof buf, "lw %s, %d(%s)", abi_name(rd),
+                          static_cast<int>(imm), abi_name(rs1));
+        else if (funct3 == 0x4)
+            std::snprintf(buf, sizeof buf, "lbu %s, %d(%s)", abi_name(rd),
+                          static_cast<int>(imm), abi_name(rs1));
+        else
+            std::snprintf(buf, sizeof buf, ".word 0x%08x", instr);
+        return buf;
+    case 0x23: {
+        uint32_t uimm = ((instr >> 25) << 5) | ((instr >> 7) & 0x1Fu);
+        if (uimm & 0x800u) uimm |= 0xFFFFF000u;
+        const int32_t simm = static_cast<int32_t>(uimm);
+        if (funct3 == 0x2)
+            std::snprintf(buf, sizeof buf, "sw %s, %d(%s)", abi_name(rs2),
+                          static_cast<int>(simm), abi_name(rs1));
+        else if (funct3 == 0x0)
+            std::snprintf(buf, sizeof buf, "sb %s, %d(%s)", abi_name(rs2),
+                          static_cast<int>(simm), abi_name(rs1));
+        else
+            std::snprintf(buf, sizeof buf, ".word 0x%08x", instr);
+        return buf;
+    }
     default:
         break;
     }
@@ -347,9 +384,9 @@ int main (int argc, char **argv) {
         uint32_t instr = 0;
         peek_instr(pc, instr);
         std::copy(ref_get_regs(), ref_get_regs() + kNumRegs, before.begin());
-
+        uint8_t ret_code = 0;
         try {
-            ref_inst_cycle();
+            ret_code = ref_inst_cycle();
         } catch (const std::exception &e) {
             std::fprintf(stderr, "TRAP at pc=0x%08x (instruction %llu): %s\n",
                          pc, static_cast<unsigned long long>(executed + 1),
@@ -378,6 +415,11 @@ int main (int argc, char **argv) {
                 std::printf("  %s = 0x%08x", reg_label(changed).c_str(),
                             regs[changed]);
             std::printf("\n");
+        }
+
+        if (ret_code == 1) {
+            stop = "EBREAK";
+            break;
         }
 
         if (next_pc == pc) {

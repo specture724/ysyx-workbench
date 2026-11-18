@@ -27,9 +27,13 @@ enum class Instruction : uint8_t {
     LW, LBU,
     // store 
     SW, SB,
+    // special
+    EBREAK,
 };
 
 Instruction decode (uint32_t instr) {
+    if (instr == 0x00100073) return Instruction::EBREAK;
+
     uint32_t opcode = instr & 0x7F;
     uint32_t funct3 = (instr >> 12) & 0x7;
     uint32_t funct7 = (instr >> 25) & 0x7F;
@@ -93,7 +97,7 @@ void write_word(uint32_t addr, uint32_t word) {
 }
 
 
-void ref_inst_cycle () {
+uint8_t ref_inst_cycle () {
     uint32_t instr = fetch_word(PC);
 
     // decode
@@ -193,10 +197,13 @@ void ref_inst_cycle () {
             break;
         }
 
+        case Instruction::EBREAK:
+            return 1;
+
         default:
             throw std::runtime_error("Should not reach here.");
     }
-
+    return 0;
 }
 
 void ref_init () {
