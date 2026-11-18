@@ -21,76 +21,24 @@ enum class Instruction : uint8_t {
     jalr,
 };
 
-struct Control {
-    enum class ImmType : uint8_t { I } imm_type;
-    enum class AluOp : uint8_t { ADD } alu_op;
-    enum class WbSel : uint8_t { ALU, PC4 } wb_sel;
-    bool reg_we;
-    bool alu_a_from_pc;
-    bool alu_b_from_imm;
-    bool jump; 
-    bool illegal;
-};
-
-
-Control decode (uint32_t instr) {
-    Control ctl{};
-    ctl.illegal = false;
+Instruction decode (uint32_t instr) {
     uint32_t opcode = instr & 0x7F;
     uint32_t funct3 = (instr >> 12) & 0x7;
 
     switch (opcode) {
         case 0x13: {
-            ctl.imm_type = Control::ImmType::I;
-            ctl.wb_sel = Control::WbSel::ALU;
-            ctl.reg_we = true;
-            ctl.alu_a_from_pc = false;
-            ctl.alu_b_from_imm = true;
-            ctl.jump = false;
             switch (funct3) {
-                case 0x0: ctl.alu_op = Control::AluOp::ADD; break;
-                default: ctl.illegal = true;
+                case 0x0: return Instruction::addi;
+                default: throw std::runtime_error("Instruction not supported.");
             }
-            break;
         }
         case 0x67: {
-            if (funct3 != 0x0) { ctl.illegal = true; break; }
-            ctl.imm_type = Control::ImmType::I;
-            ctl.wb_sel = Control::WbSel::PC4;
-            ctl.reg_we = true;
-            ctl.alu_a_from_pc = false;
-            ctl.alu_b_from_imm = true;
-            ctl.jump = true;
-            ctl.alu_op = Control::AluOp::ADD;
-            break;
+            if (funct3 != 0x0) { throw std::runtime_error("Invalid Instruction."); }
+            return Instruction::jalr;
         }
-        default: ctl.illegal = true;
+
+        default: throw std::runtime_error("Instruction not supported.");
     }
-
-    return ctl;
-}
-
-
-int32_t imm_gen(uint32_t instr, Control::ImmType t) {
-    switch (t) {
-        case Control::ImmType::I:
-            return static_cast<int32_t>(instr) >> 20;
-        default: return 0;
-    }
-}
-
-uint32_t alu(Control::AluOp alu_op, uint32_t a, uint32_t b) {
-    uint32_t output;
-    switch (alu_op) {
-    case Control::AluOp::ADD:
-        output = a + b;
-        break;
-    
-    default:
-        throw std::logic_error("unknown alu op");
-    }
-
-    return output;
 }
 
 // PC is a byte address; code and data live in the same RAM.
@@ -110,34 +58,33 @@ void ref_inst_cycle () {
     uint32_t instr = fetch(PC);
 
     // decode
-    Control ctl = decode(instr);
-    if (ctl.illegal) {
-        std::string msg = "Invalid instruction " + std::to_string(instr);
-        throw std::runtime_error(msg);
+    Instruction Instruction_type = decode(instr);
+
+    // execute
+    switch (Instruction_type) {
+        case Instruction::addi: {
+            uint8_t rs1 = (instr >> 15) & 0x1F;
+            uint8_t rd = (instr >> 7) & 0x1F;
+            uint32_t imm = static_cast<int32_t>(instr) >> 20;
+            GPR[rd] = GPR[rs1] + imm;
+            PC = PC + 4;
+            break;
+        }
+        case Instruction::jalr: {
+            uint8_t rs1 = (instr >> 15) & 0x1F;
+            uint8_t rd = (instr >> 7) & 0x1F;
+            uint32_t imm = static_cast<int32_t>(instr) >> 20;
+            uint32_t target = GPR[rs1] + imm;
+            if (rd != 0)
+                GPR[rd] = PC + 4;
+            PC = target;
+            break;
+        }
+        
+        default:
+            throw std::runtime_error("Should not reach here.");
     }
 
-    uint32_t rd  = (instr >> 7)  & 0x1F;
-    uint32_t rs1 = (instr >> 15) & 0x1F;
-    uint32_t rs2 = (instr >> 20) & 0x1F;
-
-    uint32_t a = ctl.alu_a_from_pc ? PC : GPR[rs1];
-    int32_t  imm = imm_gen(instr, ctl.imm_type);
-    uint32_t b = ctl.alu_b_from_imm ? static_cast<uint32_t>(imm) : GPR[rs2];
-
-    uint32_t alu_out = alu(ctl.alu_op, a, b);
-
-    u_int32_t wb_data = 0;
-    switch (ctl.wb_sel) {
-        case Control::WbSel::ALU: wb_data = alu_out; break;
-        case Control::WbSel::PC4: wb_data = PC + 4; break;
-        default: throw std::logic_error("unknown write back source");
-    }
-    if (ctl.reg_we && rd != 0) GPR[rd] = wb_data; // rd != 0 means that x0 will always be 0
-
-    uint32_t next_pc = PC + 4;
-    if (ctl.jump) 
-        next_pc  = alu_out & ~1u;
-    PC = next_pc;
 }
 
 void ref_init () {
