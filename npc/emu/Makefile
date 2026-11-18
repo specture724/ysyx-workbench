@@ -61,7 +61,8 @@ check-isa: $(EMU) $(ISA_TEST_BIN)
 	$(EMU) --bin $(ISA_TEST_BIN) --trace \
 		--expect x0=0 --expect a0=5 --expect a1=0xfffffffd --expect a2=2 \
 		--expect a3=0x12345000 --expect a4=5 --expect a5=2 --expect a6=7 \
-		--expect a7=42 --expect t0=0x200 --expect ra=0x2c --expect pc=0x34
+		--expect a7=42 --expect s0=0xab --expect s1=0xab05 --expect s2=0xfd \
+		--expect t0=0x200 --expect t1=0xab --expect ra=0x48 --expect pc=0x50
 
 run: $(EMU)
 	@$(EMU) $(ARGS)

@@ -24,9 +24,9 @@ enum class Instruction : uint8_t {
     // U-type
     LUI,
     // load
-    LW,
+    LW, LBU,
     // store 
-    SW,
+    SW, SB,
 };
 
 Instruction decode (uint32_t instr) {
@@ -54,11 +54,13 @@ Instruction decode (uint32_t instr) {
 
         case 0x03: {
             if (funct3 == 0x2) return Instruction::LW;
+            else if (funct3 == 0x4) return Instruction::LBU;
             else throw std::runtime_error("Invalid Instruction.");
         }
 
         case 0x23: {
             if (funct3 == 0x2) return Instruction::SW;
+            else if (funct3 == 0x0) return Instruction::SB;
             else throw std::runtime_error("Invalid Instruction.");
         }
 
@@ -151,6 +153,22 @@ void ref_inst_cycle () {
             break;
         }
 
+        case Instruction::LBU: {
+            uint8_t rs1 = (instr >> 15) & 0x1F;
+            uint8_t rd = (instr >> 7) & 0x1F;
+            uint32_t imm = static_cast<int32_t>(instr) >> 20;
+            uint32_t addr = GPR[rs1] + imm;
+            if (rd != 0) {
+                if (addr > RAM_SIZE - 1) {
+                    throw std::runtime_error(
+                        "Fetch fault at addr=0x" + std::to_string(addr));
+                }
+                GPR[rd] = static_cast<uint32_t>(RAM[addr]);
+            }
+            PC = PC + 4;
+            break;
+        }
+
         case Instruction::SW: {
             uint8_t rs1 = (instr >> 15) & 0x1F;
             uint8_t rs2 = (instr >> 20) & 0x1F;
@@ -160,6 +178,21 @@ void ref_inst_cycle () {
             PC = PC + 4;
             break;
         }
+
+        case Instruction::SB: {
+            uint8_t rs1 = (instr >> 15) & 0x1F;
+            uint8_t rs2 = (instr >> 20) & 0x1F;
+            uint32_t imm = ((static_cast<int32_t>(instr) >> 20) & (~0x1F) ) + ((instr >> 7) & 0x1F);
+            uint32_t addr = GPR[rs1] + imm;
+            if (addr > RAM_SIZE - 1) {
+                throw std::runtime_error(
+                    "Write fault at addr=0x" + std::to_string(addr));
+            }
+            RAM[addr] = static_cast<uint8_t>(GPR[rs2]);
+            PC = PC + 4;
+            break;
+        }
+
         default:
             throw std::runtime_error("Should not reach here.");
     }
