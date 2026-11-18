@@ -19,7 +19,11 @@ EXAMPLE_OBJ := $(BUILD_DIR)/program.o
 EXAMPLE_ELF := $(BUILD_DIR)/program.elf
 EXAMPLE_BIN := $(BUILD_DIR)/program.bin
 
-.PHONY: all example run clean
+ISA_TEST_OBJ := $(BUILD_DIR)/isa_test.o
+ISA_TEST_ELF := $(BUILD_DIR)/isa_test.elf
+ISA_TEST_BIN := $(BUILD_DIR)/isa_test.bin
+
+.PHONY: all example isa-test check-isa run clean
 
 all: $(EMU)
 
@@ -40,8 +44,28 @@ $(EXAMPLE_BIN): $(EXAMPLE_ELF)
 example: $(EXAMPLE_BIN)
 	@echo "example binary: $(EXAMPLE_BIN)"
 
+$(ISA_TEST_OBJ): examples/isa_test.S
+	@mkdir -p $(BUILD_DIR)
+	$(RV_CC) $(RV_FLAGS) -c $< -o $@
+
+$(ISA_TEST_ELF): $(ISA_TEST_OBJ)
+	$(RV_LD) -m elf32lriscv --image-base=0 -Ttext=0 --no-relax -e _start -o $@ $<
+
+$(ISA_TEST_BIN): $(ISA_TEST_ELF)
+	$(RV_OBJCOPY) -O binary $< $@
+
+isa-test: $(ISA_TEST_BIN)
+	@echo "isa test binary: $(ISA_TEST_BIN)"
+
+check-isa: $(EMU) $(ISA_TEST_BIN)
+	$(EMU) --bin $(ISA_TEST_BIN) --trace \
+		--expect x0=0 --expect a0=5 --expect a1=0xfffffffd --expect a2=2 \
+		--expect a3=0x12345000 --expect a4=5 --expect a5=2 --expect a6=7 \
+		--expect a7=42 --expect t0=0x200 --expect ra=0x2c --expect pc=0x34
+
 run: $(EMU)
 	@$(EMU) $(ARGS)
 
 clean:
-	rm -f $(EMU) $(EXAMPLE_OBJ) $(EXAMPLE_ELF) $(EXAMPLE_BIN)
+	rm -f $(EMU) $(EXAMPLE_OBJ) $(EXAMPLE_ELF) $(EXAMPLE_BIN) \
+	      $(ISA_TEST_OBJ) $(ISA_TEST_ELF) $(ISA_TEST_BIN)

@@ -36,7 +36,7 @@ Instruction decode (uint32_t instr) {
 
     switch (opcode) {
         case 0x13: {
-            if (funct3 == 0x0) return Instruction::ADD;
+            if (funct3 == 0x0) return Instruction::ADDI;
             else throw std::runtime_error("Invalid Instruction.");
         }
 
@@ -69,7 +69,7 @@ Instruction decode (uint32_t instr) {
 // PC is a byte address; code and data live in the same RAM.
 // An instruction is 4 bytes, little endian.
 uint32_t fetch_word (uint32_t addr) {
-    if ((addr) != 0 || addr > RAM_SIZE - 4) {
+    if ((addr % 4) != 0 || addr > RAM_SIZE - 4) {
         throw std::runtime_error(
             "Fetch fault at addr=0x" + std::to_string(addr));
     }
@@ -102,7 +102,7 @@ void ref_inst_cycle () {
         case Instruction::ADDI: {
             uint8_t rs1 = (instr >> 15) & 0x1F;
             uint8_t rd = (instr >> 7) & 0x1F;
-            uint32_t imm = instr >> 20;
+            uint32_t imm = static_cast<int32_t>(instr) >> 20;
             if (rd != 0)
                 GPR[rd] = GPR[rs1] + imm;
             PC = PC + 4;
@@ -112,8 +112,9 @@ void ref_inst_cycle () {
         case Instruction::JALR: {
             uint8_t rs1 = (instr >> 15) & 0x1F;
             uint8_t rd = (instr >> 7) & 0x1F;
-            uint32_t imm = instr >> 20;
+            uint32_t imm = static_cast<int32_t>(instr) >> 20;
             uint32_t target = GPR[rs1] + imm;
+            target = target & ~1;
             if (rd != 0)
                 GPR[rd] = PC + 4;
             PC = target;
@@ -142,7 +143,7 @@ void ref_inst_cycle () {
         case Instruction::LW: {
             uint8_t rs1 = (instr >> 15) & 0x1F;
             uint8_t rd = (instr >> 7) & 0x1F;
-            uint32_t imm = instr >> 20;
+            uint32_t imm = static_cast<int32_t>(instr) >> 20;
             uint32_t addr = GPR[rs1] + imm;
             if (rd != 0)
                 GPR[rd] = fetch_word(addr);
@@ -153,7 +154,7 @@ void ref_inst_cycle () {
         case Instruction::SW: {
             uint8_t rs1 = (instr >> 15) & 0x1F;
             uint8_t rs2 = (instr >> 20) & 0x1F;
-            uint32_t imm = instr >> 20 + ((instr >> 7) & 0x1F);
+            uint32_t imm = ((static_cast<int32_t>(instr) >> 20) & (~0x1F) ) + ((instr >> 7) & 0x1F);
             uint32_t addr = GPR[rs1] + imm;
             write_word(addr, GPR[rs2]);
             PC = PC + 4;
