@@ -16,25 +16,36 @@ std::vector<uint8_t> RAM(RAM_SIZE, 0x00);   // byte addressable, little endian
 
 enum class Instruction : uint8_t {
     // I-type ALU
-    addi,
+    ADDI,
     // I-type 
-    jalr,
+    JALR,
+    // R-type ALU
+    ADD,
+    // U-type
+    LUI,
 };
 
 Instruction decode (uint32_t instr) {
     uint32_t opcode = instr & 0x7F;
     uint32_t funct3 = (instr >> 12) & 0x7;
+    uint32_t funct7 = (instr >> 25) & 0x7F;
 
     switch (opcode) {
         case 0x13: {
-            switch (funct3) {
-                case 0x0: return Instruction::addi;
-                default: throw std::runtime_error("Instruction not supported.");
-            }
+            if (funct3 == 0x0) return Instruction::ADD;
+            else throw std::runtime_error("Invalid Instruction.");
         }
+
         case 0x67: {
             if (funct3 != 0x0) { throw std::runtime_error("Invalid Instruction."); }
-            return Instruction::jalr;
+            return Instruction::JALR;
+        }
+
+        case 0x37: return Instruction::LUI;
+
+        case 0x33: {
+            if (funct3 == 0x0 && funct7 == 0x0) return Instruction::ADD;
+            else throw std::runtime_error("Invalid Instruction.");
         }
 
         default: throw std::runtime_error("Instruction not supported.");
@@ -62,22 +73,43 @@ void ref_inst_cycle () {
 
     // execute
     switch (Instruction_type) {
-        case Instruction::addi: {
+        case Instruction::ADDI: {
             uint8_t rs1 = (instr >> 15) & 0x1F;
             uint8_t rd = (instr >> 7) & 0x1F;
-            uint32_t imm = static_cast<int32_t>(instr) >> 20;
-            GPR[rd] = GPR[rs1] + imm;
+            uint32_t imm = instr >> 20;
+            if (rd != 0)
+                GPR[rd] = GPR[rs1] + imm;
             PC = PC + 4;
             break;
         }
-        case Instruction::jalr: {
+
+        case Instruction::JALR: {
             uint8_t rs1 = (instr >> 15) & 0x1F;
             uint8_t rd = (instr >> 7) & 0x1F;
-            uint32_t imm = static_cast<int32_t>(instr) >> 20;
+            uint32_t imm = instr >> 20;
             uint32_t target = GPR[rs1] + imm;
             if (rd != 0)
                 GPR[rd] = PC + 4;
             PC = target;
+            break;
+        }
+
+        case Instruction::LUI: {
+            uint8_t rd = (instr >> 7) & 0x1F;
+            uint32_t imm = instr & 0xFFFFF000;
+            if (rd != 0)
+                GPR[rd] = imm;
+            PC = PC + 4;
+            break;
+        }
+
+        case Instruction::ADD: {
+            uint8_t rs1 = (instr >> 15) & 0x1F;
+            uint8_t rd = (instr >> 7) & 0x1F;
+            uint32_t rs2 = (instr >> 20) & 0x1F;
+            if (rd != 0)
+                GPR[rd] = GPR[rs1] + GPR[rs2];
+            PC = PC + 4;
             break;
         }
         
