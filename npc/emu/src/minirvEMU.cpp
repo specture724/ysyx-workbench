@@ -1,9 +1,11 @@
-#include <iostream>
-#include <cstdint>
-#include <cstddef>
+#include "minirvEMU.h"
+
 #include <algorithm>
-#include <vector>
+#include <cstddef>
+#include <cstdint>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 constexpr uint32_t GPR_SIZE = 32;   // 32 registers for RV32I
 constexpr uint32_t RAM_SIZE = 4096; // 4 KiB unified memory (code + data), byte addressed
@@ -146,7 +148,7 @@ void ref_init () {
 void ref_set_pc (uint32_t pc) { PC = pc; }
 
 // loader / debug interface
-void ref_load_ram (const uint8_t *data, std::size_t size, uint32_t base = 0) {
+void ref_load_ram (const uint8_t *data, std::size_t size, uint32_t base) {
     if (size == 0) return;
     if (base > RAM_SIZE || size > static_cast<std::size_t>(RAM_SIZE - base)) {
         throw std::runtime_error(
@@ -162,10 +164,3 @@ uint32_t ref_ram_size () { return RAM_SIZE; }
 // difftest interface: expose reference model state
 uint32_t *ref_get_regs () { return GPR.data(); }
 uint32_t ref_get_pc () { return PC; }
-
-// int main () {
-//     init();
-//     while (1) {
-//         inst_cycle();        
-//     }
-// }
