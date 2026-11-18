@@ -13,15 +13,18 @@ std::vector<uint32_t> ROM(ROM_SIZE, 0x00);
 enum class Instruction : uint8_t {
     // I-type ALU
     addi,
+    // I-type 
+    jalr,
 };
 
 struct Control {
     enum class ImmType : uint8_t { I } imm_type;
     enum class AluOp : uint8_t { ADD } alu_op;
-    enum class WbSel : uint8_t { ALU } wb_sel;
+    enum class WbSel : uint8_t { ALU, PC4 } wb_sel;
     bool reg_we;
     bool alu_a_from_pc;
     bool alu_b_from_imm;
+    bool jump; 
     bool illegal;
 };
 
@@ -39,10 +42,22 @@ Control decode (uint32_t instr) {
             ctl.reg_we = true;
             ctl.alu_a_from_pc = false;
             ctl.alu_b_from_imm = true;
+            ctl.jump = false;
             switch (funct3) {
                 case 0x0: ctl.alu_op = Control::AluOp::ADD; break;
                 default: ctl.illegal = true;
             }
+            break;
+        }
+        case 0x67: {
+            if (funct3 != 0x0) { ctl.illegal = true; break; }
+            ctl.imm_type = Control::ImmType::I;
+            ctl.wb_sel = Control::WbSel::PC4;
+            ctl.reg_we = true;
+            ctl.alu_a_from_pc = false;
+            ctl.alu_b_from_imm = true;
+            ctl.jump = true;
+            ctl.alu_op = Control::AluOp::ADD;
             break;
         }
         default: ctl.illegal = true;
@@ -97,10 +112,13 @@ void ref_inst_cycle () {
     u_int32_t wb_data = 0;
     switch (ctl.wb_sel) {
         case Control::WbSel::ALU: wb_data = alu_out; break;
+        case Control::WbSel::PC4: wb_data = PC + 4; break;
     }
     if (ctl.reg_we && rd != 0) GPR[rd] = wb_data; // rd != 0 means that x0 will always be 0
 
     uint32_t next_pc = PC + 4;
+    if (ctl.jump) 
+        next_pc  = alu_out & ~1u;
     PC = next_pc;
 }
 
