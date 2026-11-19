@@ -12,6 +12,7 @@
 static constexpr uint32_t RESET_PC   = 0x80000000u;
 static constexpr uint32_t PMEM_WORDS = 1024;
 static constexpr uint32_t NOP        = 0x00000013u; // addi x0, x0, 0
+static constexpr uint32_t EBREAK_PC  = 0x80000014u;
 
 static std::array<uint32_t, PMEM_WORDS> pmem;
 static Vtop *top = nullptr;
@@ -25,7 +26,7 @@ static void pmem_init() {
         0x00200213u, // addi x4, x0, 2
         0x00300293u, // addi x5, x0, 3
         0x02a00313u, // addi x6, x0, 42
-        0xffc08067u, // jalr x0, -4(x1)
+        0x00100073u, // ebreak
         0x00700393u, // addi x7, x0, 7
     };
 
@@ -40,6 +41,10 @@ static uint32_t pmem_read(uint32_t addr) {
         return NOP;
     }
     return pmem[index];
+}
+
+extern "C" void ebreak_handler() {
+    std::printf("[DPI-C] ebreak instruction detected. Ending simulation.\n");
 }
 
 static void dut_single_cycle() {
@@ -76,12 +81,20 @@ int main(int argc, char *argv[]) {
 
     top->rootp->top__DOT__u_rf__DOT__rf[1] = 0x80000015u;
 
-    constexpr int kInstructions = 3;
-    for (int cycle = 0; cycle < kInstructions; cycle++) {
+    constexpr int kMaxCycles = 20;
+    int cycle = 0;
+    while (!Verilated::gotFinish() && cycle < kMaxCycles) {
         top->inst = pmem_read(top->pc);
         top->eval();
         print_state(cycle);
         dut_single_cycle();
+        ++cycle;
+    }
+
+    bool ok = true;
+    if (!Verilated::gotFinish()) {
+        std::printf("timeout: EBREAK was not reached in %d cycles\n", kMaxCycles);
+        ok = false;
     }
 
     auto *root = top->rootp;
@@ -104,7 +117,6 @@ int main(int argc, char *argv[]) {
         {7, 0x00000000u, "x7"},
     };
 
-    bool ok = true;
     std::printf("\nfinal pc = 0x%08x\n", pc);
     for (const auto &c : checks) {
         const uint32_t got = rf[c.index];
@@ -114,10 +126,9 @@ int main(int argc, char *argv[]) {
         ok &= pass;
     }
 
-    const uint32_t expect_pc = 0x80000010u;
-    if (pc != expect_pc) {
+    if (pc != EBREAK_PC) {
         std::printf("  pc   = 0x%08x (expect 0x%08x) MISMATCH\n",
-                    pc, expect_pc);
+                    pc, EBREAK_PC);
         ok = false;
     }
 

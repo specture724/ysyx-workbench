@@ -1,3 +1,4 @@
+import "DPI-C" function void ebreak_handler();
 module top
     import pkg::*;
 (
@@ -8,10 +9,18 @@ module top
 );
     logic [XLEN-1:0] pc_reg;
     logic [XLEN-1:0] pc_next;
+    pkg::decode_t    dec;
 
     always_ff @(posedge clk) begin
-        if (rst) pc_reg <= RESET_PC;
-        else     pc_reg <= pc_next;
+        if (rst)                pc_reg <= RESET_PC;
+        else if (!dec.ebreak)   pc_reg <= pc_next;
+    end
+
+    always_ff @(posedge clk) begin : ebreak
+        if (!rst && dec.ebreak) begin
+            ebreak_handler();
+            $finish;
+        end
     end
 
     logic [XLEN-1:0] inst_if;
@@ -25,8 +34,6 @@ module top
     );
 
     assign pc = imem_addr;
-
-    pkg::decode_t dec;
 
     idu u_idu (
         .instr   (inst_if),

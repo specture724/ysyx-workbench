@@ -63,6 +63,10 @@ module idu
                 end
             end
 
+            E: begin
+                if (instr == 32'h00100073) dec_out.ebreak = 1'b1;
+            end
+
             default: ;
         endcase
     end
