@@ -4,7 +4,8 @@ INC_PATH ?=
 
 VERILATOR = verilator
 VERILATOR_CFLAGS += -MMD --build -cc  \
-				-O3 --x-assign fast --x-initial fast --noassert
+				-O3 --x-assign fast --x-initial fast --noassert \
+				--public-flat-rw
 
 BUILD_DIR = ./build
 OBJ_DIR = $(BUILD_DIR)/obj_dir
@@ -20,7 +21,7 @@ $(SRC_AUTO_BIND): $(NXDC_FILES)
 	python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
 
 # project source
-VSRCS = $(shell find $(abspath ./vsrc) -name "*.v")
+VSRCS = $(shell find $(abspath ./vsrc) \( -name "*.v" -o -name "*.sv" \) | sort)
 CSRCS = $(shell find $(abspath ./csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 CSRCS += $(SRC_AUTO_BIND)
 
