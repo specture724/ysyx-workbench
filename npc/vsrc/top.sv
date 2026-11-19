@@ -14,8 +14,6 @@ module top
         else     pc_reg <= pc_next;
     end
 
-    assign pc_next = pc_reg + 32'd4;
-
     logic [XLEN-1:0] inst_if;
     logic [XLEN-1:0] imem_addr;
 
@@ -81,12 +79,23 @@ module top
         .out    (alu_out)
     );
 
+    logic [XLEN-1:0] jalr_target;
+    assign jalr_target = {alu_out[XLEN-1:1], 1'b0};
+
+    always_comb begin : Update_PC
+        if (dec.jump)
+            pc_next = jalr_target;
+        else
+            pc_next = pc_reg + 32'd4;
+    end
+
     logic [XLEN-1:0] wb_data;
 
     always_comb begin : wb_mux
         unique case (dec.wb_sel)
-            WB_ALU:  wb_data = alu_out;
-            default: wb_data = '0;
+            WB_ALU:     wb_data = alu_out;
+            WB_PC:      wb_data = pc_reg + 32'd4;
+            default:    wb_data = '0;
         endcase
     end
 

@@ -6,9 +6,10 @@ package pkg;
 
     typedef enum logic [3:0] { ALU_ADD } alu_op_t;
     typedef enum logic [1:0] { ALU_SRC_RS1, ALU_SRC_RS2, ALU_SRC_IMM, ALU_SRC_PC } alu_src_t;
-    typedef enum logic [1:0] { WB_ALU } wb_sel_t;
+    typedef enum logic [1:0] { WB_ALU, WB_PC } wb_sel_t;
     typedef enum logic [6:0] {
-        ALU_I = 7'h13
+        ALU_I = 7'h13,
+        JALR = 7'h67
     } opcode_t;
     typedef enum logic [2:0] { IMM_I, NONE } imm_t;
 
@@ -23,6 +24,7 @@ package pkg;
         logic                   rf_wen;
         logic [REG_ADDR_W-1:0]  rd_addr;
         wb_sel_t                wb_sel;
+        logic                   jump;
     } decode_t;
 
 endpackage

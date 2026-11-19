@@ -26,7 +26,6 @@ module idu
     );
 
     always_comb begin : decode
-        // 默认值: 非法/未实现指令不写寄存器
         dec_out   = '0;
         imm_type  = NONE;
 
@@ -50,6 +49,20 @@ module idu
                     default: ;
                 endcase
             end 
+
+            JALR: begin // JALR
+                if (funct3 == 3'b000) begin
+                    dec_out.jump        = 1'b1;
+                    dec_out.alu_src_a   = ALU_SRC_RS1;
+                    dec_out.alu_src_b   = ALU_SRC_IMM;
+                    dec_out.alu_op      = ALU_ADD;
+                    dec_out.wb_sel      = WB_PC;
+                    imm_type            = IMM_I;
+                    dec_out.rf_wen      = 1'b1;
+                    dec_out.valid       = 1'b1;
+                end
+            end
+
             default: ;
         endcase
     end
