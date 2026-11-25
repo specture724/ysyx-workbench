@@ -36,6 +36,11 @@ void pmem_init() {
         0x67890913u, // addi x18, x18, 0x678
         0x800009b7u, // lui  x19, 0x80000
         0x10098993u, // addi x19, x19, 0x100
+        0x00208a33u, // add  x20, x1, x2
+        0x00f70ab3u, // add  x21, x14, x15
+        0x00108b33u, // add  x22, x1, x1
+        0x00208033u, // add  x0, x1, x2
+        0x00f78bb3u, // add  x23, x15, x15
         0x00100073u, // ebreak
         0x07f00413u, // addi x8, x0, 0x7f
     };

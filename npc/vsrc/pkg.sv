@@ -14,7 +14,8 @@ package pkg;
         E       = 7'h73,
         LOAD    = 7'h03,
         STORE   = 7'h23,
-        LUI     = 7'h37
+        LUI     = 7'h37,
+        ALU_R   = 7'h33
     } opcode_t;
     typedef enum logic [2:0] { IMM_NONE, IMM_I, IMM_S, IMM_U } imm_t;
     typedef enum logic [1:0] { MEM_NONE, MEM_B, MEM_W } mem_size_t;

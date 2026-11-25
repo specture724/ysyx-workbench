@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     pmem_init();
     dut_reset(5);
 
-    constexpr int kMaxCycles = 30;
+    constexpr int kMaxCycles = 50;
     int cycle = 0;
     while (!Verilated::gotFinish() && cycle < kMaxCycles) {
         top->inst = pmem_read(top->pc);
@@ -93,6 +93,10 @@ int main(int argc, char *argv[]) {
         {17, 0x80000000u, "x17"},
         {18, 0x12345678u, "x18"},
         {19, 0x80000100u, "x19"},
+        {20, 0x00000223u, "x20"},
+        {21, 0x12344000u, "x21"},
+        {22, 0x00000200u, "x22"},
+        {23, 0xffffe000u, "x23"},
     };
 
     std::printf("\nfinal pc = 0x%08x\n", pc);

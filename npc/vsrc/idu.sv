@@ -6,12 +6,14 @@ module idu
 );
     logic [6:0] opcode;
     logic [2:0] funct3;
+    logic [6:0] funct7;
     logic [4:0] rd;
     logic [4:0] rs1;
     logic [4:0] rs2;
 
     assign opcode = instr[6:0];
     assign funct3 = instr[14:12];
+    assign funct7 = instr[31:25];
     assign rd     = instr[11:7];
     assign rs1    = instr[19:15];
     assign rs2    = instr[24:20];
@@ -130,6 +132,22 @@ module idu
                 imm_type        = IMM_U;
                 dec_out.rf_wen  = '1;
                 dec_out.wb_sel  = WB_IMM;
+            end
+
+            ALU_R: begin
+                case (funct3)
+                    3'b000: begin
+                        if (funct7 == 7'h00) begin // ADD
+                            dec_out.valid       = '1;
+                            dec_out.alu_op      = ALU_ADD;
+                            dec_out.alu_src_a   = ALU_SRC_RS1;
+                            dec_out.alu_src_b   = ALU_SRC_RS2;
+                            dec_out.rf_wen      = '1;
+                            dec_out.wb_sel      = WB_ALU;
+                        end
+                    end      
+                    default: ;
+                endcase
             end
             default: ;
         endcase
