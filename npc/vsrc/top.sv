@@ -104,6 +104,7 @@ module top
             WB_ALU:     wb_data = alu_out;
             WB_PC:      wb_data = pc_reg + 32'd4;
             WB_MEM:     wb_data = mem_rdata;
+            WB_IMM:     wb_data = dec.imm;
             default:    wb_data = '0;
         endcase
     end

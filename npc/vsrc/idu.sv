@@ -42,8 +42,8 @@ module idu
                 case (funct3)
                     3'b000: begin // ADDI
                         dec_out.alu_op = ALU_ADD;
-                        dec_out.rf_wen = 1'b1;
-                        dec_out.valid  = 1'b1;
+                        dec_out.rf_wen = '1;
+                        dec_out.valid  = '1;
                         imm_type       = IMM_I;
                     end 
                     default: ;
@@ -52,14 +52,14 @@ module idu
 
             JALR: begin // JALR
                 if (funct3 == 3'b000) begin
-                    dec_out.jump        = 1'b1;
+                    dec_out.jump        = '1;
                     dec_out.alu_src_a   = ALU_SRC_RS1;
                     dec_out.alu_src_b   = ALU_SRC_IMM;
                     dec_out.alu_op      = ALU_ADD;
                     dec_out.wb_sel      = WB_PC;
                     imm_type            = IMM_I;
-                    dec_out.rf_wen      = 1'b1;
-                    dec_out.valid       = 1'b1;
+                    dec_out.rf_wen      = '1;
+                    dec_out.valid       = '1;
                 end
             end
 
@@ -70,7 +70,7 @@ module idu
             LOAD:begin
                 case (funct3)
                     3'b010: begin // LW
-                        dec_out.valid       = 1'b1;
+                        dec_out.valid       = '1;
                         dec_out.alu_op      = ALU_ADD;
                         dec_out.alu_src_a   = ALU_SRC_RS1;
                         dec_out.alu_src_b   = ALU_SRC_IMM;
@@ -82,7 +82,7 @@ module idu
                     end
 
                     3'b100: begin // LBU
-                        dec_out.valid       = 1'b1;
+                        dec_out.valid       = '1;
                         dec_out.alu_op      = ALU_ADD;
                         dec_out.alu_src_a   = ALU_SRC_RS1;
                         dec_out.alu_src_b   = ALU_SRC_IMM;
@@ -100,7 +100,7 @@ module idu
             STORE: begin
                 case (funct3)
                     3'b010: begin // SW
-                        dec_out.valid       = 1'b1;
+                        dec_out.valid       = '1;
                         dec_out.alu_op      = ALU_ADD;
                         dec_out.alu_src_a   = ALU_SRC_RS1;
                         dec_out.alu_src_b   = ALU_SRC_IMM;
@@ -111,7 +111,7 @@ module idu
                     end
 
                     3'b000: begin // SB
-                        dec_out.valid       = 1'b1;
+                        dec_out.valid       = '1;
                         dec_out.alu_op      = ALU_ADD;
                         dec_out.alu_src_a   = ALU_SRC_RS1;
                         dec_out.alu_src_b   = ALU_SRC_IMM;
@@ -123,6 +123,13 @@ module idu
 
                     default: dec_out.valid = '0;
                 endcase
+            end
+
+            LUI: begin
+                dec_out.valid   = '1;
+                imm_type        = IMM_U;
+                dec_out.rf_wen  = '1;
+                dec_out.wb_sel  = WB_IMM;
             end
             default: ;
         endcase
