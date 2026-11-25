@@ -7,10 +7,8 @@ module immu
 );
     always_comb begin : imm_generator
         case (imm_type)
-            IMM_I: begin
-                // I 型立即数需要符号扩展
-                imm = {{20{instr[31]}}, instr[31:20]};
-            end 
+            IMM_I: imm = {{20{instr[31]}}, instr[31:20]};
+            IMM_S: imm = {{20{instr[31]}}, instr[31:25], instr[11:7]};
             default: imm = '0;
         endcase
     end

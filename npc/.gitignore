@@ -7,6 +7,8 @@
 !*.v
 !*.sv
 !*.cc
+!*.hh
+!*.hpp
 !*.cpp
 !.gitignore
 !README.md

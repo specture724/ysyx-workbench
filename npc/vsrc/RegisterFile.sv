@@ -13,7 +13,7 @@ module RegisterFile
 );
     logic [XLEN-1:0] rf [REG_NUM-1:0];
 
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
       if (rst) begin
         for (int i = 0; i < REG_NUM; i++)
           rf[i] <= '0;

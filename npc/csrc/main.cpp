@@ -7,41 +7,9 @@
 #include "verilated.h"
 #include "Vtop.h"
 #include "Vtop___024root.h"
-
-
-static constexpr uint32_t RESET_PC   = 0x80000000u;
-static constexpr uint32_t PMEM_WORDS = 1024;
-static constexpr uint32_t NOP        = 0x00000013u; // addi x0, x0, 0
-static constexpr uint32_t EBREAK_PC  = 0x80000014u;
-
-static std::array<uint32_t, PMEM_WORDS> pmem;
+#include "consts.hpp"
+#include "pmem.hpp"
 static Vtop *top = nullptr;
-
-static void pmem_init() {
-    pmem.fill(NOP);
-
-    const uint32_t program[] = {
-        0xffc08167u, // jalr x2, -4(x1)
-        0x00100193u, // addi x3, x0, 1
-        0x00200213u, // addi x4, x0, 2
-        0x00300293u, // addi x5, x0, 3
-        0x02a00313u, // addi x6, x0, 42
-        0x00100073u, // ebreak
-        0x00700393u, // addi x7, x0, 7
-    };
-
-    std::copy(program, program + sizeof(program) / sizeof(program[0]),
-              pmem.begin());
-}
-
-static uint32_t pmem_read(uint32_t addr) {
-    const uint32_t index = (addr - RESET_PC) >> 2;
-    if (index >= PMEM_WORDS) {
-        std::fprintf(stderr, "pmem_read: address 0x%08x out of range\n", addr);
-        return NOP;
-    }
-    return pmem[index];
-}
 
 extern "C" void ebreak_handler() {
     std::printf("[DPI-C] ebreak instruction detected. Ending simulation.\n");
@@ -79,9 +47,7 @@ int main(int argc, char *argv[]) {
     pmem_init();
     dut_reset(5);
 
-    top->rootp->top__DOT__u_rf__DOT__rf[1] = 0x80000015u;
-
-    constexpr int kMaxCycles = 20;
+    constexpr int kMaxCycles = 30;
     int cycle = 0;
     while (!Verilated::gotFinish() && cycle < kMaxCycles) {
         top->inst = pmem_read(top->pc);
@@ -108,13 +74,19 @@ int main(int argc, char *argv[]) {
     };
     const Check checks[] = {
         {0, 0x00000000u, "x0"},
-        {1, 0x80000015u, "x1"},
-        {2, 0x80000004u, "x2"},
-        {3, 0x00000000u, "x3"},
-        {4, 0x00000000u, "x4"},
-        {5, 0x00000000u, "x5"},
-        {6, 0x0000002au, "x6"},
-        {7, 0x00000000u, "x7"},
+        {1, 0x00000100u, "x1"},
+        {2, 0x00000123u, "x2"},
+        {3, 0x00000123u, "x3"},
+        {4, 0x00000045u, "x4"},
+        {5, 0x00000045u, "x5"},
+        {6, 0x00000023u, "x6"},
+        {7, 0x00004523u, "x7"},
+        {8, 0x00000000u, "x8"},
+        {9, 0x00000067u, "x9"},
+        {10, 0x00000089u, "x10"},
+        {11, 0x00000067u, "x11"},
+        {12, 0x00000089u, "x12"},
+        {13, 0x67894523u, "x13"},
     };
 
     std::printf("\nfinal pc = 0x%08x\n", pc);
@@ -131,6 +103,13 @@ int main(int argc, char *argv[]) {
                     pc, EBREAK_PC);
         ok = false;
     }
+
+    const uint32_t mem_word = pmem[0x100 >> 2];
+    const uint32_t expect_mem = 0x67894523u;
+    const bool mem_ok = (mem_word == expect_mem);
+    std::printf("  mem[0x100] = 0x%08x (expect 0x%08x) %s\n",
+                mem_word, expect_mem, mem_ok ? "ok" : "MISMATCH");
+    ok &= mem_ok;
 
     std::printf("%s\n", ok ? "PASS" : "FAIL");
 

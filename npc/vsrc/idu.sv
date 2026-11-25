@@ -27,7 +27,7 @@ module idu
 
     always_comb begin : decode
         dec_out   = '0;
-        imm_type  = NONE;
+        imm_type  = IMM_NONE;
 
         dec_out.rs1_addr = rs1;
         dec_out.rs2_addr = rs2;
@@ -67,6 +67,63 @@ module idu
                 if (instr == 32'h00100073) dec_out.ebreak = 1'b1;
             end
 
+            LOAD:begin
+                case (funct3)
+                    3'b010: begin // LW
+                        dec_out.valid       = 1'b1;
+                        dec_out.alu_op      = ALU_ADD;
+                        dec_out.alu_src_a   = ALU_SRC_RS1;
+                        dec_out.alu_src_b   = ALU_SRC_IMM;
+                        dec_out.rf_wen      = '1;
+                        dec_out.wb_sel      = WB_MEM;
+                        dec_out.mem_re      = '1;
+                        imm_type            = IMM_I;
+                        dec_out.mem_size    = MEM_W;
+                    end
+
+                    3'b100: begin // LBU
+                        dec_out.valid       = 1'b1;
+                        dec_out.alu_op      = ALU_ADD;
+                        dec_out.alu_src_a   = ALU_SRC_RS1;
+                        dec_out.alu_src_b   = ALU_SRC_IMM;
+                        dec_out.rf_wen      = '1;
+                        dec_out.wb_sel      = WB_MEM;
+                        dec_out.mem_re      = '1;
+                        dec_out.mem_size    = MEM_B;
+                        dec_out.is_signed   = '0;
+                        imm_type            = IMM_I;
+                    end
+                    default: dec_out.valid = '0;
+                endcase
+            end
+
+            STORE: begin
+                case (funct3)
+                    3'b010: begin // SW
+                        dec_out.valid       = 1'b1;
+                        dec_out.alu_op      = ALU_ADD;
+                        dec_out.alu_src_a   = ALU_SRC_RS1;
+                        dec_out.alu_src_b   = ALU_SRC_IMM;
+                        dec_out.rf_wen      = '0;
+                        dec_out.mem_we      = '1;
+                        imm_type            = IMM_S;
+                        dec_out.mem_size    = MEM_W;
+                    end
+
+                    3'b000: begin // SB
+                        dec_out.valid       = 1'b1;
+                        dec_out.alu_op      = ALU_ADD;
+                        dec_out.alu_src_a   = ALU_SRC_RS1;
+                        dec_out.alu_src_b   = ALU_SRC_IMM;
+                        dec_out.rf_wen      = '0;
+                        dec_out.mem_we      = '1;
+                        imm_type            = IMM_S;
+                        dec_out.mem_size    = MEM_B;
+                    end
+
+                    default: dec_out.valid = '0;
+                endcase
+            end
             default: ;
         endcase
     end

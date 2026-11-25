@@ -1,4 +1,5 @@
 import "DPI-C" function void ebreak_handler();
+
 module top
     import pkg::*;
 (
@@ -102,6 +103,7 @@ module top
         unique case (dec.wb_sel)
             WB_ALU:     wb_data = alu_out;
             WB_PC:      wb_data = pc_reg + 32'd4;
+            WB_MEM:     wb_data = mem_rdata;
             default:    wb_data = '0;
         endcase
     end
@@ -114,4 +116,27 @@ module top
         .rf_wdata (rf_wdata)
     );
 
+    logic [XLEN-1:0] mem_rdata_raw, mem_wdata, mem_rdata;
+    logic [7:0] wmask;
+
+    pmem u_pmem(
+        .clk(clk),
+        .wmask(wmask),
+        .ren(dec.mem_re),
+        .wen(dec.mem_we),
+        .raddr(alu_out),
+        .waddr(alu_out),
+        .wdata(mem_wdata),
+        .rdata(mem_rdata_raw)
+    );
+
+    lsu u_lsu(
+        .dec(dec),
+        .raddr(alu_out),
+        .mem_data(mem_rdata_raw),
+        .store_data(rs2_data),
+        .wdata(mem_wdata),
+        .rdata(mem_rdata),
+        .wmask(wmask)
+    );
 endmodule
